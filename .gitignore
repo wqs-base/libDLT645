@@ -1,0 +1,12 @@
+# build outputs
+/build/
+/cmake-build/
+/out/
+*.o
+*.obj
+*.a
+*.lib
+*.exe
+
+# generated / derived
+docs/*.txt
