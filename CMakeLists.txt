@@ -30,8 +30,10 @@ add_library(dlt645 STATIC
 add_library(dlt645::dlt645 ALIAS dlt645)
 
 target_include_directories(dlt645 PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/dlt645>
-    $<INSTALL_INTERFACE:include/dlt645>)
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/dlt645>)
 
 if(MSVC)
     target_compile_options(dlt645 PRIVATE /W4 /utf-8)
@@ -44,9 +46,10 @@ endif()
 # ---------------------------------------------------------------------
 if(DLT645_BUILD_SERIAL)
     add_library(dlt645_serial STATIC port/dlt645_serial.c)
+    add_library(dlt645::dlt645_serial ALIAS dlt645_serial)
     target_link_libraries(dlt645_serial PUBLIC dlt645)
-    if(WIN32)
-        # winsock-free, only kernel32 is needed
+    if(NOT MSVC)
+        target_compile_options(dlt645_serial PRIVATE -Wall -Wextra)
     endif()
 endif()
 
@@ -84,10 +87,56 @@ if(DLT645_BUILD_EXAMPLES)
 endif()
 
 # ---------------------------------------------------------------------
-# Install
+# Install + package config (find_package / pkg-config)
 # ---------------------------------------------------------------------
 include(GNUInstallDirs)
-install(TARGETS dlt645
+include(CMakePackageConfigHelpers)
+
+set(DLT645_INSTALL_CMAKEDIR
+    "${CMAKE_INSTALL_LIBDIR}/cmake/dlt645"
+    CACHE STRING "Installation directory for the CMake package files")
+
+set(DLT645_PUBLIC_HEADERS
+    include/dlt645)
+
+# Targets that make up the exported package.
+set(DLT645_EXPORT_TARGETS dlt645)
+if(DLT645_BUILD_SERIAL)
+    list(APPEND DLT645_EXPORT_TARGETS dlt645_serial)
+endif()
+
+install(TARGETS ${DLT645_EXPORT_TARGETS}
+    EXPORT dlt645Targets
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
-install(DIRECTORY include/dlt645 DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+
+install(DIRECTORY ${DLT645_PUBLIC_HEADERS}
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+
+install(EXPORT dlt645Targets
+    FILE dlt645Targets.cmake
+    NAMESPACE dlt645::
+    DESTINATION ${DLT645_INSTALL_CMAKEDIR})
+
+configure_package_config_file(
+    cmake/dlt645Config.cmake.in
+    "${CMAKE_CURRENT_BINARY_DIR}/dlt645Config.cmake"
+    INSTALL_DESTINATION ${DLT645_INSTALL_CMAKEDIR})
+
+write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/dlt645ConfigVersion.cmake"
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY SameMajorVersion)
+
+install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/dlt645Config.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/dlt645ConfigVersion.cmake"
+    DESTINATION ${DLT645_INSTALL_CMAKEDIR})
+
+# pkg-config metadata
+configure_file(cmake/dlt645.pc.in
+    "${CMAKE_CURRENT_BINARY_DIR}/dlt645.pc" @ONLY)
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/dlt645.pc"
+    DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig")

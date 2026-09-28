@@ -54,6 +54,81 @@ ctest --test-dir build --output-on-failure
 
 ---
 
+## 作为依赖使用
+
+安装后同时提供 **CMake package** (`find_package(dlt645)`) 与 **pkg-config**
+(`dlt645.pc`)，两种包含风格都可用：`#include <dlt645/dlt645.h>`（推荐）或
+`#include <dlt645.h>`。安装产物：
+
+```
+<prefix>/include/dlt645/*.h
+<prefix>/lib/libdlt645.a            (+ libdlt645_serial.a)
+<prefix>/lib/cmake/dlt645/dlt645Config.cmake
+<prefix>/lib/cmake/dlt645/dlt645Targets.cmake    # 目标 dlt645::dlt645 / dlt645::dlt645_serial
+<prefix>/lib/pkgconfig/dlt645.pc
+```
+
+### 1. 安装到系统 / 自定义前缀
+
+```sh
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+      -DCMAKE_INSTALL_PREFIX=/usr/local \
+      -DDLT645_BUILD_TESTS=OFF -DDLT645_BUILD_EXAMPLES=OFF
+cmake --build build
+cmake --install build            # 或 cmake --install build --prefix <dir>
+```
+
+### 2. CMake `find_package`（推荐）
+
+```cmake
+find_package(dlt645 0.1 CONFIG REQUIRED)
+
+add_executable(app main.c)
+target_link_libraries(app PRIVATE dlt645::dlt645)
+# 需要串口适配器时：
+target_link_libraries(app PRIVATE dlt645::dlt645_serial)
+```
+
+```sh
+cmake -S . -B build -DCMAKE_PREFIX_PATH=<prefix>
+```
+
+### 3. `add_subdirectory` / `FetchContent`（不安装）
+
+```cmake
+# 方式 A：源码子目录
+add_subdirectory(third_party/libDLT645_2007)
+target_link_libraries(app PRIVATE dlt645::dlt645)
+
+# 方式 B：拉取
+include(FetchContent)
+FetchContent_Declare(dlt645
+    GIT_REPOSITORY https://github.com/wqs-base/libDLT645.git
+    GIT_TAG        master)
+FetchContent_MakeAvailable(dlt645)
+target_link_libraries(app PRIVATE dlt645::dlt645)
+```
+
+两种方式都可加 `-DDLT645_BUILD_TESTS=OFF -DDLT645_BUILD_EXAMPLES=OFF` 避免构建
+本仓库的测试与示例。
+
+### 4. pkg-config
+
+```sh
+cc app.c $(pkg-config --cflags --libs dlt645) -o app
+```
+
+### 5. 无 CMake 的裸工程
+
+把 `include/dlt645/` 加入头文件搜索路径，编译并链接 `src/*.c`
+（**不要**编译 `src/dlt645_di_table.inc`，它是被 `#include` 的生成文件）：
+
+```sh
+cc -std=c99 -Iinclude/dlt645 app.c src/*.c -o app
+```
+
+---
+
 ## 快速开始（主站，阻塞式）
 
 ```c

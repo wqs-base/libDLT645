@@ -35,6 +35,10 @@ ctest --test-dir build --output-on-failure
   in-memory FIFO — mirror that pattern for new end-to-end cases.
 - `port/dlt645_serial.c` is the only OS-touching file (Windows + POSIX serial,
   line settings 8E1). The core `src/` must stay OS-free.
+- `install()` exports a CMake package (`find_package(dlt645)` →
+  `dlt645::dlt645`, `dlt645::dlt645_serial`) plus `dlt645.pc`. Consumer-facing
+  include style is `#include <dlt645/dlt645.h>`; in-repo sources/tests keep the
+  bare `#include "dlt645_xxx.h"` style via `-Iinclude/dlt645`.
 
 ## Protocol conventions that bite
 

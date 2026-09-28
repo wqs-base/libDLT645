@@ -1,0 +1,10 @@
+prefix=@CMAKE_INSTALL_PREFIX@
+exec_prefix=${prefix}
+libdir=@CMAKE_INSTALL_FULL_LIBDIR@
+includedir=@CMAKE_INSTALL_FULL_INCLUDEDIR@
+
+Name: dlt645
+Description: DL/T 645-2007 multi-function watt-hour meter protocol library
+Version: @PROJECT_VERSION@
+Libs: -L${libdir} -ldlt645
+Cflags: -I${includedir}
