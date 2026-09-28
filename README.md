@@ -273,8 +273,38 @@ python tools/gen_di_table.py docs/多功能电能表通信协议.pdf
 `(费率N)` / `(上N结算日)` / `(数据块)` 后缀。附录 A 仅示例性列出部分结算日，
 查询失败时会逐级放宽（忽略费率/结算日）以保证可解析。
 
-也可自行注册/覆盖：目录表是 `static const`，如需扩展，可在应用层维护自己的
-映射并在 `on_frame` 中优先使用。
+也可自行注册/覆盖：调用 `dlt645_di_set_user_table()` 注册一个**应用自有的静态
+数组**（不拷贝、不分配内存），自定义或厂商扩展的标识即可被 `dlt645_di_lookup()`
+与 `dlt645_di_format_name()` 识别；**同等具体度下用户条目优先**，因此也能覆盖内置
+条目（名称/长度/单位等）。
+
+```c
+static const dlt645_di_info_t my_di[] = {
+    /* 新增厂商自定义标识 */
+    DLT645_DI_DEFINE(0x0A000001u, "厂商自定义电能", "kWh",
+                     "XXXXXX.XX", 4, 2, DLT645_DI_READ, DLT645_DI_CAT_OTHER),
+    /* 覆盖内置条目 */
+    DLT645_DI_DEFINE(0x00010000u, "正向有功总电能(厂家重定义)", "kWh",
+                     "XXXXXX.XX", 4, 2,
+                     DLT645_DI_READ | DLT645_DI_WRITE, DLT645_DI_CAT_ENERGY),
+    /* 带通配掩码：DI1=费率可变，掩码中为 0 的位表示“任意值” */
+    DLT645_DI_ENTRY(0x0B000000u, 0xFFFF00FFu, "厂商自定义总电能", "kWh",
+                    "XXXXXX.XX", 4, 2,
+                    DLT645_DI_READ | DLT645_DI_WILD_RATE, DLT645_DI_CAT_ENERGY),
+};
+
+dlt645_di_set_user_table(my_di, sizeof(my_di) / sizeof(my_di[0]));
+/* ... 之后 lookup/format_name 即会命中自定义条目 ... */
+dlt645_di_clear_user_table();   /* 需要时恢复内置行为 */
+```
+
+要点：
+- 传入的数组必须在整个使用期间保持有效（用 `static` 数组最稳妥）。
+- `mask` 中为 `1` 的位必须与 `di` 相等，为 `0` 的位表示该字节任意（用于费率/
+  结算日/数据块）；`DLT645_DI_DEFINE` 等同于 `mask = 0xFFFFFFFF`。
+- 仅主站侧的**解释/命名**用到目录；从站数据由 `dlt645_slave_model_t` 的
+  `on_read` 回调提供，无需登记 DI。
+- 非线程安全：请在启动阶段注册，不要与并发查询同时进行。
 
 ---
 

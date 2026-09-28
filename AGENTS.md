@@ -54,4 +54,6 @@ ctest --test-dir build --output-on-failure
 - DI range items (rates 1..63, settlement days, data blocks) are stored as
   **mask/wildcard** entries, not expanded. `dlt645_di_lookup` picks the most
   specific match and falls back by ignoring rate/day; `dlt645_di_format_name`
-  appends `(费率N)/(上N结算日)/(数据块)`.
+  appends `(费率N)/(上N结算日)/(数据块)`. Apps add vendor DIs or override
+  built-ins via `dlt645_di_set_user_table()` (static array, user wins ties) —
+  do not hand-edit the generated table for that.

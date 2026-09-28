@@ -11,6 +11,10 @@
 
 #include "dlt645_di_table.inc"
 
+/* Application supplied catalogue extension (not owned, never freed). */
+static const dlt645_di_info_t *g_user_table = NULL;
+static size_t g_user_count = 0;
+
 /* Number of set bits in a mask (specificity). */
 static int mask_bits(uint32_t m)
 {
@@ -36,6 +40,22 @@ static const dlt645_di_info_t *best_match(uint32_t di)
         {
             int bits = mask_bits(e->mask);
             if (bits > best_bits) {
+                best_bits = bits;
+                best = e;
+            }
+        }
+    }
+
+    /* User entries win on equal specificity, so they can override the
+     * built-in catalogue as well as extend it. */
+    for (i = 0; i < g_user_count; i++) {
+        const dlt645_di_info_t *e = &g_user_table[i];
+        if ((di & e->mask) != (e->di & e->mask)) {
+            continue;
+        }
+        {
+            int bits = mask_bits(e->mask);
+            if (bits >= best_bits) {
                 best_bits = bits;
                 best = e;
             }
@@ -98,6 +118,33 @@ size_t dlt645_di_count(void)
 const dlt645_di_info_t *dlt645_di_at(size_t index)
 {
     return (index < dlt645_di_table_size) ? &dlt645_di_table[index] : NULL;
+}
+
+void dlt645_di_set_user_table(const dlt645_di_info_t *table, size_t count)
+{
+    if (table == NULL || count == 0u) {
+        g_user_table = NULL;
+        g_user_count = 0u;
+        return;
+    }
+    g_user_table = table;
+    g_user_count = count;
+}
+
+void dlt645_di_clear_user_table(void)
+{
+    g_user_table = NULL;
+    g_user_count = 0u;
+}
+
+size_t dlt645_di_user_count(void)
+{
+    return g_user_count;
+}
+
+const dlt645_di_info_t *dlt645_di_user_at(size_t index)
+{
+    return (index < g_user_count) ? &g_user_table[index] : NULL;
 }
 
 const char *dlt645_di_category_name(dlt645_di_category_t category)

@@ -63,6 +63,38 @@ size_t dlt645_di_count(void);
 /* Access an entry by index (0..count-1). */
 const dlt645_di_info_t *dlt645_di_at(size_t index);
 
+/* ------------------------------------------------------------------ */
+/* User supplied catalogue extension                                   */
+/* ------------------------------------------------------------------ */
+
+/*
+ * Register an application owned array of catalogue entries.  The table
+ * is not copied, so it must stay alive (a static array is ideal).  User
+ * entries are consulted together with the built-in catalogue and win on
+ * equal specificity, which lets them both add vendor specific
+ * identifiers and override built-in ones (name / length / unit ...).
+ *
+ * Passing NULL or count == 0 clears the extension.  Call this during
+ * start-up; the library holds no lock and is not thread safe.
+ */
+void dlt645_di_set_user_table(const dlt645_di_info_t *table, size_t count);
+void dlt645_di_clear_user_table(void);
+size_t dlt645_di_user_count(void);
+const dlt645_di_info_t *dlt645_di_user_at(size_t index);
+
+/*
+ * Convenience initialisers for user entries.  DLT645_DI_DEFINE is an
+ * exact (fully specified) identifier; DLT645_DI_ENTRY allows a wildcard
+ * `mask` (0 bits = "any value" for that byte).
+ */
+#define DLT645_DI_ENTRY(di_, mask_, name_, unit_, fmt_, len_, dec_, flags_, cat_) \
+    { (di_), (mask_), (name_), (unit_), (fmt_), (uint8_t)(len_), \
+      (uint8_t)(dec_), (uint8_t)(flags_), (uint8_t)(cat_) }
+
+#define DLT645_DI_DEFINE(di_, name_, unit_, fmt_, len_, dec_, flags_, cat_) \
+    DLT645_DI_ENTRY(di_, 0xFFFFFFFFu, name_, unit_, fmt_, len_, dec_, \
+                    flags_, cat_)
+
 /* UTF-8 category label. */
 const char *dlt645_di_category_name(dlt645_di_category_t category);
 
